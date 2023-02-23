@@ -116,11 +116,26 @@ function getCurrenciesNames(inputArray, outputObject) {
     }
 }
 
-function fetchBinanceCurrency(currency) {
+const fallbackBinanceApiResult = {};
+
+function fetchBinanceCurrency(binanceCurrencySymbol) {
     let details;
 
-    return fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${currency}`).then(res => res.json()).then(res => {
+    return fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${binanceCurrencySymbol}`).then(res => res.json()).then(res => {
         details = res;
+
+        if (res.code === 0) {
+            // При деплое на railway BinanceAPI недоступен(сервера railway заблокированы у Binance)
+            // "Service unavailable from a restricted location according to 'b. Eligibility' in https://www.binance.com/en/terms. Please contact customer service if you believe you received this message in error."
+            if (fallbackBinanceApiResult[binanceCurrencySymbol]) {
+                return fallbackBinanceApiResult[binanceCurrencySymbol];
+            }
+
+            throw new Error('Binance API is not available');
+        }
+
+        return res;
+    }).then(res => {
         const {symbol, price} = res;
 
         const fromCurrency = symbol.substring(0, 3); // BTC
@@ -150,6 +165,19 @@ async function getCurrenciesFromBinance(availableCurrencies) {
 router.get("/get-all-currencies", async (req, res) => {
     try {
         const BINANCE_PAIRS = ["BTCUAH", "BTCUSDT", "BTCEUR"];
+
+        fallbackBinanceApiResult["BTCUSDT"] = {
+            "symbol": "BTCUSDT",
+            "price": "23757.51000000"
+        };
+        fallbackBinanceApiResult["BTCUAH"] = {
+            "symbol": "BTCUAH",
+            "price": "941042.00000000"
+        };
+        fallbackBinanceApiResult["BTCEUR"] = {
+            "symbol": "BTCEUR",
+            "price": "22400.00000000"
+        };
 
         const availableCurrencies = {};
 
