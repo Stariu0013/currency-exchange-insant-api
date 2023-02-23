@@ -117,7 +117,10 @@ function getCurrenciesNames(inputArray, outputObject) {
 }
 
 function fetchBinanceCurrency(currency) {
+    let details;
+
     return fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${currency}`).then(res => res.json()).then(res => {
+        details = res;
         const { symbol, price } = res;
 
         const fromCurrency = symbol.substring(0, 3); // BTC
@@ -133,6 +136,10 @@ function fetchBinanceCurrency(currency) {
             buy: price,
             sale: price,
         };
+    }).catch(err => {
+        err.details = details;
+
+        throw err;
     });
 }
 
@@ -141,24 +148,32 @@ async function getCurrenciesFromBinance(availableCurrencies) {
 }
 
 router.get("/get-all-currencies", async (req, res) => {
-    const BINANCE_PAIRS = ["BTCUAH", "BTCUSDT", "BTCEUR"];
+    try {
+        const BINANCE_PAIRS = ["BTCUAH", "BTCUSDT", "BTCEUR"];
 
-    const availableCurrencies = {};
+        const availableCurrencies = {};
 
-    const currenciesFromPrivatBank = await fetch("https://api.privatbank.ua/p24api/pubinfo?exchange&coursid=5").then(res => res.json());
-    const binanceCurrencies = await getCurrenciesFromBinance(BINANCE_PAIRS).then(res => res);
+        const currenciesFromPrivatBank = await fetch("https://api.privatbank.ua/p24api/pubinfo?exchange&coursid=5").then(res => res.json());
+        const binanceCurrencies = await getCurrenciesFromBinance(BINANCE_PAIRS).then(res => res);
 
-    getCurrenciesNames(currenciesFromPrivatBank, availableCurrencies);
-    getCurrenciesNames(binanceCurrencies, availableCurrencies);
+        getCurrenciesNames(currenciesFromPrivatBank, availableCurrencies);
+        getCurrenciesNames(binanceCurrencies, availableCurrencies);
 
-    const currencies = [...normalizeData(currenciesFromPrivatBank), ...normalizeData(binanceCurrencies)];
+        const currencies = [...normalizeData(currenciesFromPrivatBank), ...normalizeData(binanceCurrencies)];
 
-    fillMissedPairs(currencies, availableCurrencies);
+        fillMissedPairs(currencies, availableCurrencies);
 
-    res.status(200).json({
-        currencies,
-        availableCurrencies: Object.keys(availableCurrencies),
-    });
+        res.status(200).json({
+            currencies,
+            availableCurrencies: Object.keys(availableCurrencies),
+        });
+    }
+    catch (err) {
+        res.status(500).json({
+            error: err.message,
+            details: err.details,
+        });
+    }
 });
 
 module.exports = router;
