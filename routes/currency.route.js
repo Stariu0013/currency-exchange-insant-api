@@ -1,4 +1,4 @@
-const { Router } = require("express");
+const {Router} = require("express");
 const router = Router();
 
 if (typeof globalThis.fetch !== "function") {
@@ -20,7 +20,7 @@ function fillMissedPairs(normalizedData, availableCurrencies) {
     const knownPairs = {};
 
     for (const item of normalizedData) {
-        const { to, from } = item;
+        const {to, from} = item;
         const key = `${to}:${from}`;
 
         knownPairs[key] = item;
@@ -121,7 +121,7 @@ function fetchBinanceCurrency(currency) {
 
     return fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${currency}`).then(res => res.json()).then(res => {
         details = res;
-        const { symbol, price } = res;
+        const {symbol, price} = res;
 
         const fromCurrency = symbol.substring(0, 3); // BTC
         let toCurrency = symbol.substring(3, symbol.length);
@@ -167,8 +167,12 @@ router.get("/get-all-currencies", async (req, res) => {
             currencies,
             availableCurrencies: Object.keys(availableCurrencies),
         });
-    }
-    catch (err) {
+    } catch (err) {
+        console.log('REQUEST_FAILED', JSON.stringify({
+            error: err.message,
+            details: err.details,
+        }));
+
         res.status(500).json({
             error: err.message,
             details: err.details,
